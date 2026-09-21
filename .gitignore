@@ -1,0 +1,33 @@
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Jupyter Notebook checkpoints and scratch
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
+
+# Local reference literature (downloaded PDFs)
+papers/
+
+# Compressed archives
+*.zip
+*.tar.gz
+
+# LaTeX intermediate build artifacts
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
