@@ -3,8 +3,8 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22872845.svg)](https://doi.org/10.5281/zenodo.22872845)
 [![Hardware: NVIDIA T4](https://img.shields.io/badge/Hardware-NVIDIA%20T4%20Verified-76b900.svg)](https://www.nvidia.com/)
-[![Preprint](https://img.shields.io/badge/Preprint-Zenodo%20%7C%20arXiv-success.svg)](https://github.com/Brayan114/SphereTok)
 
 > **SphereTok** provides embodied agents with compact, discrete 3D geometric state representations by compressing local 32 × 32 × 32 voxel volumes into discrete 3D spatial tokens via affordance-aware pruning and vector quantization.
 
@@ -123,9 +123,10 @@ If you find SphereTok useful in your research or applications, please cite:
 @article{brayan2026spheretok,
   title={SphereTok: An Egocentric 3D World Tokenizer for Embodied Perception in Voxel Environments},
   author={Brayan},
-  journal={Preprint},
+  journal={Zenodo Preprint},
   year={2026},
-  url={https://github.com/Brayan114/SphereTok}
+  doi={10.5281/zenodo.22872845},
+  url={https://doi.org/10.5281/zenodo.22872845}
 }
 ```
 
