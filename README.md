@@ -6,24 +6,27 @@
 [![Hardware: NVIDIA T4](https://img.shields.io/badge/Hardware-NVIDIA%20T4%20Verified-76b900.svg)](https://www.nvidia.com/)
 [![Preprint](https://img.shields.io/badge/Preprint-Zenodo%20%7C%20arXiv-success.svg)](https://github.com/Brayan114/SphereTok)
 
-> **SphereTok** provides embodied agents with compact, discrete 3D geometric state representations by compressing local $32 \times 32 \times 32$ voxel volumes into discrete 3D spatial tokens via affordance-aware pruning and vector quantization.
+> **SphereTok** provides embodied agents with compact, discrete 3D geometric state representations by compressing local 32 × 32 × 32 voxel volumes into discrete 3D spatial tokens via affordance-aware pruning and vector quantization.
 
 ---
 
 ## 📸 Qualitative 3D Reconstruction
 
-![SphereTok Qualitative 3D Reconstruction](figures/spheretok_qualitative_reconstruction.png)
-*(a) Ground truth $32 \times 32 \times 32$ Minecraft chunk (32,768 cells); (b) Active $4 \times 4 \times 4$ micro-cubes retained in SphereTok token space ($K \approx 258$) via surface clearance affordance pruning; (c) Decoded 3D voxel volume reconstructed from discrete codebook token lookups.*
+<p align="center">
+  <img src="figures/spheretok_qualitative_reconstruction.png" width="100%" alt="SphereTok Qualitative 3D Reconstruction" />
+</p>
+
+*(a) Ground truth 32 × 32 × 32 Minecraft chunk (32,768 cells); (b) Active 4 × 4 × 4 micro-cubes retained in SphereTok token space (K ≈ 258) via surface clearance affordance pruning; (c) Decoded 3D voxel volume reconstructed from discrete codebook token lookups.*
 
 ---
 
 ## 🚀 Key Highlights
 
 - **Overcomes the "Airport Tower Dilemma":** Unlike text-prompted LLMs (e.g., Voyager) that operate on flat telemetry strings lacking continuous geometry, and 2D visual policies (e.g., VPT, STEVE-1) that suffer from spatial amnesia upon camera rotation, SphereTok maintains a continuous 3D egocentric field of physical affordances.
-- **127.0x Voxel-to-Token Compression:** Compresses 32,768 dense voxels into an average of **258 active tokens**, fitting comfortably into standard Transformer context windows ($<6.4\%$ of a 4k context).
-- **Surface-Affordance Clearance Pruning:** Strictly retains the Chebyshev 26-neighborhood ($d_\infty \leq 1$) clearance envelope bordering solid terrain, ensuring jump clearances, overhead headroom, and footing are never pruned while deep sky void and subterranean bedrock are eliminated.
-- **Sub-2 ms Latency:** Runs in **1.84 ms on an NVIDIA T4 GPU (~543 FPS)** and **12.3 ms on a CPU (~81 FPS)**, consuming $<3.7\%$ of Minecraft's 50 ms (20 Hz) tick window.
-- **Zero Coordinate Jitter:** The voxel lattice remains aligned with world cardinal axes ($X, Y, Z$) to avoid rotational resampling aliasing, while view orientation is injected via continuous relative spherical positional embeddings $(\rho, \Delta\theta, \Delta\phi)$.
+- **127.0× Voxel-to-Token Compression:** Compresses 32,768 dense voxels into an average of **258 active tokens**, fitting comfortably into standard Transformer context windows (<6.4% of a 4k context).
+- **Surface-Affordance Clearance Pruning:** Strictly retains the Chebyshev 26-neighborhood (d_∞ ≤ 1) clearance envelope bordering solid terrain, ensuring jump clearances, overhead headroom, and footing are never pruned while deep sky void and subterranean bedrock are eliminated.
+- **Sub-2 ms Latency:** Runs in **1.84 ms on an NVIDIA T4 GPU (~543 FPS)** and **12.3 ms on a CPU (~81 FPS)**, consuming <3.7% of Minecraft's 50 ms (20 Hz) tick window.
+- **Zero Coordinate Jitter:** The voxel lattice remains aligned with world cardinal axes (X, Y, Z) to avoid rotational resampling aliasing, while view orientation is injected via continuous relative spherical positional embeddings (ρ, Δθ, Δϕ).
 
 ---
 
@@ -33,7 +36,7 @@
 |---|:---:|:---:|---|
 | **Voxel Spatial Accuracy** | 100.0% (Ground Truth) | **87.06%** | High-fidelity 3D structural recovery |
 | **Solid Terrain IoU** | 100.0% (Ground Truth) | **85.38%** | Precise physical collision preservation |
-| **Active Sequence Length** | 32,768 cells | **258 tokens** | **127.0x context compression** |
+| **Active Sequence Length** | 32,768 cells | **258 tokens** | **127.0× context compression** |
 | **Active Codebook Utilization** | — | **81.6% (418/512)** | Zero representation collapse |
 | **GPU Inference Latency (T4)** | — | **1.84 ms** | Real-time (~543 FPS) |
 | **CPU Inference Latency** | — | **12.3 ms** | Real-time (~81 FPS) |
@@ -60,8 +63,7 @@ SphereTok/
 ├── demo.py                      # Interactive verification demo on synthetic Minecraft chunk
 ├── evaluate_checkpoint.py       # Full evaluation script on held-out procedural terrain
 ├── benchmark_parkour_policy.py  # 100-trial parkour gap jump policy benchmark
-├── main.tex                     # Publication LaTeX manuscript
-├── SphereTok_Workshop.tex       # Camera-ready workshop submission source
+├── SphereTok_Kaggle_Training.ipynb # Self-contained Kaggle/Colab GPU training notebook
 └── README.md
 ```
 
