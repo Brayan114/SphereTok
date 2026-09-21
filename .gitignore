@@ -10,6 +10,12 @@ __pycache__/
 
 # Local reference literature (downloaded PDFs)
 papers/
+*.pdf
+
+# Paper drafts and LaTeX source files
+*.tex
+paper_draft_3d_world_tokenizer.md
+literature_survey_3d_world_tokenizer.md
 
 # Compressed archives
 *.zip
