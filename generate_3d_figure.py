@@ -98,7 +98,7 @@ def main():
     recon_filled = (recon_vol_t != 0)
     recon_colors = get_voxel_colors(recon_vol_t)
     ax3.voxels(recon_filled, facecolors=recon_colors, edgecolors='k', linewidth=0.1, alpha=0.9)
-    ax3.set_title("(c) Decoded 3D Reconstruction\n(87.1% Voxel Accuracy, 85.4% IoU)", fontsize=13, fontweight='bold', pad=10)
+    ax3.set_title("(c) Decoded 3D Reconstruction\n(Sample: 87.1% Acc, 85.4% IoU | Multi-Biome: 93.4% Acc)", fontsize=11.5, fontweight='bold', pad=10)
     ax3.set_xlabel("X (Width)")
     ax3.set_ylabel("Z (Depth)")
     ax3.set_zlabel("Y (Elevation)")

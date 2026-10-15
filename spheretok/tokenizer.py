@@ -56,9 +56,10 @@ class EgocentricPositionalEncoding(nn.Module):
     Computes relative egocentric positional embeddings in spherical coordinates (r, theta, phi)
     relative to the agent's current position and view vector.
     """
-    def __init__(self, embedding_dim: int = 128):
+    def __init__(self, embedding_dim: int = 128, use_fourier: bool = False):
         super().__init__()
         self.embedding_dim = embedding_dim
+        self.use_fourier = use_fourier
         self.mlp = nn.Sequential(
             nn.Linear(3, embedding_dim // 2),
             nn.SiLU(),
@@ -82,8 +83,20 @@ class EgocentricPositionalEncoding(nn.Module):
         yaw_rel = (torch.atan2(dz, dx) - agent_yaw + math.pi) % (2.0 * math.pi) - math.pi
         pitch_rel = torch.asin(torch.clamp(dy / r, -1.0 + 1e-6, 1.0 - 1e-6)) - agent_pitch
 
-        # Normalize coordinates into spherical input tensor
+        # Normalize coordinates into spherical input tensor in [-1, 1]
         spherical = torch.stack([r / 16.0, yaw_rel / math.pi, pitch_rel / (math.pi / 2.0)], dim=-1)
+
+        if self.use_fourier:
+            # Deterministic multiscale Fourier frequency features
+            num_bands = self.embedding_dim // 6
+            freqs = 2.0 ** torch.arange(num_bands, device=spherical.device, dtype=spherical.dtype) * math.pi
+            args = spherical.unsqueeze(-1) * freqs
+            fourier = torch.cat([torch.sin(args), torch.cos(args)], dim=-1).flatten(-2)
+            if fourier.shape[-1] < self.embedding_dim:
+                pad = torch.zeros(*fourier.shape[:-1], self.embedding_dim - fourier.shape[-1], device=fourier.device)
+                return torch.cat([fourier, pad], dim=-1)
+            return fourier[..., :self.embedding_dim]
+
         return self.mlp(spherical)
 
 
@@ -154,7 +167,8 @@ class SphereTok(nn.Module):
         patch_size: int = 4,
         latent_dim: int = 128,
         codebook_size: int = 512,
-        air_class_id: int = 0
+        air_class_id: int = 0,
+        use_fourier_pos: bool = False
     ):
         super().__init__()
         self.num_block_classes = num_block_classes
@@ -162,6 +176,7 @@ class SphereTok(nn.Module):
         self.patch_size = patch_size
         self.latent_dim = latent_dim
         self.air_class_id = air_class_id
+        self.use_fourier_pos = use_fourier_pos
 
         self.num_patches_per_axis = grid_size // patch_size
         self.total_patches = self.num_patches_per_axis ** 3 # 8 * 8 * 8 = 512 patches
@@ -173,12 +188,13 @@ class SphereTok(nn.Module):
 
         self.encoder = PatchEncoder3D(in_channels=num_block_classes, latent_dim=latent_dim, patch_size=patch_size)
         self.vq = VectorQuantizer(num_embeddings=codebook_size, embedding_dim=latent_dim)
-        self.pos_encoder = EgocentricPositionalEncoding(embedding_dim=latent_dim)
+        self.pos_encoder = EgocentricPositionalEncoding(embedding_dim=latent_dim, use_fourier=use_fourier_pos)
         self.decoder = PatchDecoder3D(out_channels=num_block_classes, latent_dim=latent_dim, patch_size=patch_size)
 
         # Precompute relative patch centers (dx, dy, dz) centered around (0, 0, 0)
         coords = torch.arange(self.num_patches_per_axis) * patch_size + (patch_size / 2.0) - (grid_size / 2.0)
-        grid_x, grid_y, grid_z = torch.meshgrid(coords, coords, coords, indexing='ij')
+        grid_y, grid_x, grid_z = torch.meshgrid(coords, coords, coords, indexing='ij')
+        # Store as (dx, dy, dz) where dx=grid_x, dy=grid_y (vertical elevation), dz=grid_z
         patch_centers = torch.stack([grid_x.flatten(), grid_y.flatten(), grid_z.flatten()], dim=-1) # (512, 3)
         self.register_buffer("patch_centers", patch_centers)
 
