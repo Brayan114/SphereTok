@@ -210,25 +210,73 @@ class SphereTok(nn.Module):
         full_recon = full_recon.permute(0, 4, 1, 5, 2, 6, 3, 7).contiguous()
         return full_recon.view(batch_size, self.num_block_classes, self.grid_size, self.grid_size, self.grid_size)
 
-    def forward(self, voxel_grid: torch.Tensor, yaw: float = 0.0, pitch: float = 0.0, prune_air: bool = True):
+    def compute_affordance_mask(self, patches: torch.Tensor, mode: str = "clearance", cull_bedrock: bool = False):
+        """
+        Computes 3D morphological affordance retention mask:
+        - mode='none': retains all 512 candidate micro-cubes.
+        - mode='solid': blind air pruning (retains only micro-cubes with solid voxels).
+        - mode='clearance': 26-neighborhood Chebyshev clearance shell (solid + adjacent air headroom/footing).
+        - cull_bedrock: if True, prunes interior solid patches completely encased on all 26 sides (deep bedrock).
+        """
+        B = patches.shape[0]
+        N = self.num_patches_per_axis
+
+        solid_mask = (patches != self.air_class_id).any(dim=-1).any(dim=-1).any(dim=-1) # (B, 512)
+
+        if mode == "none" or not solid_mask.any():
+            return torch.ones_like(solid_mask, dtype=torch.bool)
+
+        if mode == "solid":
+            return solid_mask
+
+        # Mode: 'clearance' (26-neighborhood Chebyshev dilation via 3D Max-Pooling)
+        solid_grid = solid_mask.view(B, 1, N, N, N).float()
+        dilated = F.max_pool3d(solid_grid, kernel_size=3, stride=1, padding=1)
+        retained = (dilated > 0) # Retains solid terrain + adjacent air clearance envelope
+
+        if cull_bedrock:
+            # Interior solid culling: if all 27 patches in 3x3x3 neighborhood are solid, it's deep interior bedrock
+            interior_bedrock = -F.max_pool3d(-solid_grid, kernel_size=3, stride=1, padding=1)
+            retained = retained & (interior_bedrock == 0)
+
+        # Unconditionally preserve agent's immediate cell at center
+        c = N // 2
+        retained[:, :, c, c, c] = 1.0
+
+        return retained.view(B, -1)
+
+    def forward(
+        self,
+        voxel_grid: torch.Tensor,
+        yaw: float = 0.0,
+        pitch: float = 0.0,
+        prune_air: bool = True,
+        cull_bedrock: bool = False,
+        mode: str = "clearance"
+    ):
         """
         Forward pass:
-        1. Patchify voxel grid.
-        2. Identify and prune purely air patches (sparse tokenization).
-        3. 3D Encode non-empty patches.
-        4. Vector Quantize to discrete 3D tokens.
+        1. Patchify voxel grid into 4x4x4 micro-cubes.
+        2. Apply 3D morphological surface-affordance clearance filter.
+        3. 3D Encode active micro-cubes.
+        4. Vector Quantize to discrete 3D World Tokens.
         5. Inject relative egocentric positional embeddings.
-        6. Decode and compute reconstruction loss.
+        6. Transposed decode and compute reconstruction loss.
         """
         B = voxel_grid.shape[0]
         # (B, 512, 4, 4, 4)
         patches = self.extract_patches(voxel_grid)
 
-        # Sparse occupancy mask: does patch contain any non-air block?
-        non_air_mask = (patches != self.air_class_id).any(dim=-1).any(dim=-1).any(dim=-1) # (B, 512)
+        # Determine pruning mode
+        if not prune_air:
+            active_mode = "none"
+        else:
+            active_mode = mode
 
-        if prune_air and non_air_mask.any():
-            active_idx = torch.nonzero(non_air_mask[0]).squeeze(-1)
+        affordance_mask = self.compute_affordance_mask(patches, mode=active_mode, cull_bedrock=cull_bedrock)
+
+        if active_mode != "none" and affordance_mask.any():
+            active_idx = torch.nonzero(affordance_mask[0]).squeeze(-1)
             active_patches = patches[:, active_idx] # (B, K, 4, 4, 4)
             active_centers = self.patch_centers[active_idx].unsqueeze(0).expand(B, -1, -1)
         else:

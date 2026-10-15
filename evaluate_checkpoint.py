@@ -7,6 +7,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 from spheretok.tokenizer import SphereTok
+from spheretok.dataset import ProceduralMinecraftDataset
 from demo import create_synthetic_minecraft_chunk
 
 def main():
@@ -37,10 +38,11 @@ def main():
     used_tokens = set()
     total_token_slots = 0
 
-    print("\n[Benchmarking] Running inference across 20 synthetic Minecraft test chunks...")
+    test_dataset = ProceduralMinecraftDataset(num_samples=20, seed=9999)
+    print("\n[Benchmarking] Running inference across 20 diverse procedural Minecraft test chunks...")
     with torch.no_grad():
-        for i in range(20):
-            chunk = create_synthetic_minecraft_chunk()
+        for i in range(len(test_dataset)):
+            chunk = test_dataset[i].unsqueeze(0) # (1, 32, 32, 32)
             B = chunk.shape[0]
 
             # Forward pass without air pruning to evaluate full 512-patch reconstruction
