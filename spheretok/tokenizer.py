@@ -79,7 +79,7 @@ class EgocentricPositionalEncoding(nn.Module):
         dz = patch_coords[..., 2]
 
         r = torch.sqrt(dx**2 + dy**2 + dz**2 + 1e-6)
-        yaw_rel = torch.atan2(dz, dx) - agent_yaw
+        yaw_rel = (torch.atan2(dz, dx) - agent_yaw + math.pi) % (2.0 * math.pi) - math.pi
         pitch_rel = torch.asin(torch.clamp(dy / r, -1.0 + 1e-6, 1.0 - 1e-6)) - agent_pitch
 
         # Normalize coordinates into spherical input tensor
@@ -275,14 +275,32 @@ class SphereTok(nn.Module):
 
         affordance_mask = self.compute_affordance_mask(patches, mode=active_mode, cull_bedrock=cull_bedrock)
 
+        padding_mask = None
         if active_mode != "none" and affordance_mask.any():
-            active_idx = torch.nonzero(affordance_mask[0]).squeeze(-1)
-            active_patches = patches[:, active_idx] # (B, K, 4, 4, 4)
-            active_centers = self.patch_centers[active_idx].unsqueeze(0).expand(B, -1, -1)
+            if B == 1:
+                active_idx = torch.nonzero(affordance_mask[0]).squeeze(-1)
+                active_patches = patches[:, active_idx] # (1, K, 4, 4, 4)
+                active_centers = self.patch_centers[active_idx].unsqueeze(0)
+                padding_mask = torch.zeros((1, active_patches.shape[1]), dtype=torch.bool, device=voxel_grid.device)
+            else:
+                max_K = int(affordance_mask.sum(dim=-1).max().item())
+                max_K = max(max_K, 1)
+                active_patches = torch.zeros(B, max_K, self.patch_size, self.patch_size, self.patch_size,
+                                             dtype=patches.dtype, device=voxel_grid.device)
+                active_centers = torch.zeros(B, max_K, 3, dtype=self.patch_centers.dtype, device=voxel_grid.device)
+                padding_mask = torch.ones(B, max_K, dtype=torch.bool, device=voxel_grid.device) # True = ignore/padding
+
+                for b in range(B):
+                    idx = torch.nonzero(affordance_mask[b]).squeeze(-1)
+                    k = len(idx)
+                    if k > 0:
+                        active_patches[b, :k] = patches[b, idx]
+                        active_centers[b, :k] = self.patch_centers[idx]
+                        padding_mask[b, :k] = False
         else:
-            active_idx = torch.arange(self.total_patches, device=voxel_grid.device)
             active_patches = patches
             active_centers = self.patch_centers.unsqueeze(0).expand(B, -1, -1)
+            padding_mask = torch.zeros((B, self.total_patches), dtype=torch.bool, device=voxel_grid.device)
 
         K = active_patches.shape[1]
 
@@ -304,18 +322,27 @@ class SphereTok(nn.Module):
         recon_patches = self.decoder(z_q.view(-1, self.latent_dim))
         recon_patches = recon_patches.view(B, K, self.num_block_classes, self.patch_size, self.patch_size, self.patch_size)
 
-        # Reconstruction loss (Cross Entropy over non-empty patches)
-        rec_loss = F.cross_entropy(
-            recon_patches.view(-1, self.num_block_classes),
-            flat_active.view(-1)
-        )
+        # Reconstruction loss (Cross Entropy over valid active patches)
+        if padding_mask is not None and padding_mask.any():
+            valid_mask = ~padding_mask.unsqueeze(-1).expand(-1, -1, self.patch_size**3).reshape(-1)
+            rec_loss = F.cross_entropy(
+                recon_patches.view(-1, self.num_block_classes)[valid_mask],
+                flat_active.view(-1)[valid_mask]
+            )
+        else:
+            rec_loss = F.cross_entropy(
+                recon_patches.view(-1, self.num_block_classes),
+                flat_active.view(-1)
+            )
 
         total_loss = rec_loss + vq_loss
 
         return {
             "tokens": token_indices,                   # Discrete 3D World Tokens (B, K)
             "continuous_tokens": tokens_with_pos,     # Tokens with 3D egocentric pos (B, K, D)
-            "active_patch_count": K,                  # Pruned token count (e.g., 78 instead of 512)
+            "padding_mask": padding_mask,             # PyTorch key_padding_mask (B, K): True indicates padded/ignored
+            "affordance_mask": affordance_mask,       # Dense boolean affordance mask (B, 512)
+            "active_patch_count": K,                  # Pruned token count
             "compression_ratio": (self.grid_size**3) / K, # Compression factor
             "total_loss": total_loss,
             "rec_loss": rec_loss,

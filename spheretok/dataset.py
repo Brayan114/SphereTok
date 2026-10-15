@@ -1,7 +1,10 @@
 """
-Procedural Minecraft Terrain Dataset for SphereTok.
-Generates realistic 32x32x32 voxel chunks featuring undulating terrain,
-subterranean cave networks, and surface obstacle pillars.
+Procedural Multi-Biome Minecraft Terrain Dataset for SphereTok.
+Synthesizes diverse 32x32x32 voxel chunks across 4 distinct Minecraft environmental biomes:
+1. Plains: Rolling gentle hills with soil, trees, and small underground cavities.
+2. Mountains: High vertical elevation peaks (Y up to 28), sheer slopes, and exposed rock.
+3. Ravines: Deep vertical canyon chasms cutting through bedrock strata with steep walls.
+4. Caverns: Dense subterranean cave chambers with interconnected winding passageways and water pools.
 """
 
 import torch
@@ -10,65 +13,105 @@ import numpy as np
 
 class ProceduralMinecraftDataset(Dataset):
     """
-    Synthesizes diverse procedural 3D Minecraft chunks:
+    Synthesizes diverse procedural 3D Minecraft chunks across multiple biomes:
     - 0: Air
-    - 1: Stone (bedrock and underground subterranean strata)
-    - 2: Soil / Grass (surface terrain envelope)
-    - 3: Wood (vertical obstacle pillars / trees)
-    - 4: Water
+    - 1: Stone (Subterranean strata, canyon walls, mountain rock)
+    - 2: Grass / Soil (Surface terrain layer)
+    - 3: Wood (Tree trunks / obstacle pillars)
+    - 4: Water (Subterranean aquifers / surface pools)
     """
-    def __init__(self, num_samples: int = 1000, grid_size: int = 32, seed: int = 42):
+    def __init__(self, num_samples: int = 1000, grid_size: int = 32, biome: str = "mixed", seed: int = 42):
         super().__init__()
         self.num_samples = num_samples
         self.grid_size = grid_size
+        self.biome = biome
         self.seed = seed
+        self.biomes_list = ["plains", "mountains", "ravine", "cavern"]
 
     def __len__(self):
         return self.num_samples
 
     def __getitem__(self, idx: int):
-        # Deterministic per-sample seed for reproducibility
         rng = np.random.RandomState(self.seed + idx)
-
         grid = torch.zeros((self.grid_size, self.grid_size, self.grid_size), dtype=torch.long)
 
-        # Baseline ground elevation (Y from 8 to 14)
-        base_h = rng.randint(8, 14)
+        # Select biome
+        if self.biome == "mixed":
+            active_biome = self.biomes_list[idx % len(self.biomes_list)]
+        else:
+            active_biome = self.biome
 
-        # Generate undulating terrain using composite sinusoidal waves
-        x_coords = np.linspace(0, 2 * np.pi, self.grid_size)
-        z_coords = np.linspace(0, 2 * np.pi, self.grid_size)
-        X, Z = np.meshgrid(x_coords, z_coords)
-        terrain_height = (
-            base_h
-            + 3.0 * np.sin(X + rng.uniform(0, 3))
-            + 2.0 * np.cos(Z + rng.uniform(0, 3))
-        ).astype(int)
-        terrain_height = np.clip(terrain_height, 4, 22)
+        if active_biome == "plains":
+            base_h = rng.randint(8, 12)
+            x_c = np.linspace(0, 2 * np.pi, self.grid_size)
+            z_c = np.linspace(0, 2 * np.pi, self.grid_size)
+            X, Z = np.meshgrid(x_c, z_c)
+            terrain_h = np.clip(
+                (base_h + 2.0 * np.sin(X + rng.uniform(0, 3)) + 1.5 * np.cos(Z + rng.uniform(0, 3))).astype(int),
+                4, 16
+            )
+            for x in range(self.grid_size):
+                for z in range(self.grid_size):
+                    h = terrain_h[x, z]
+                    grid[0:max(1, h - 2), x, z] = 1 # Stone
+                    grid[max(0, h - 2):h, x, z] = 2 # Grass / Soil
 
-        for x in range(self.grid_size):
-            for z in range(self.grid_size):
-                h = terrain_height[x, z]
-                # Subterranean stone
-                grid[0:max(1, h - 2), x, z] = 1
-                # Surface soil / grass layer
-                grid[max(0, h - 2):h, x, z] = 2
+            # Tree / obstacle pillar
+            if rng.rand() > 0.3:
+                px, pz = rng.randint(6, 26, size=2)
+                ph = rng.randint(4, 7)
+                gy = terrain_h[px, pz]
+                grid[gy:min(self.grid_size, gy + ph), px, pz] = 3
 
-        # Carve random underground cave cavities (70% probability)
-        if rng.rand() > 0.3:
-            cave_x, cave_y, cave_z = rng.randint(8, 24, size=3)
-            cave_r = rng.randint(3, 6)
-            for y in range(max(1, cave_y - cave_r), min(self.grid_size, cave_y + cave_r)):
-                for x in range(max(0, cave_x - cave_r), min(self.grid_size, cave_x + cave_r)):
-                    for z in range(max(0, cave_z - cave_r), min(self.grid_size, cave_z + cave_r)):
-                        if (x - cave_x)**2 + (y - cave_y)**2 + (z - cave_z)**2 <= cave_r**2:
-                            grid[y, x, z] = 0 # Air inside cave
+            # Underground cave
+            if rng.rand() > 0.4:
+                cx, cy, cz = rng.randint(8, 24, size=3)
+                cr = rng.randint(3, 5)
+                for y in range(max(1, cy - cr), min(self.grid_size, cy + cr)):
+                    for x in range(max(0, cx - cr), min(self.grid_size, cx + cr)):
+                        for z in range(max(0, cz - cr), min(self.grid_size, cz + cr)):
+                            if (x - cx)**2 + (y - cy)**2 + (z - cz)**2 <= cr**2:
+                                grid[y, x, z] = 0
 
-        # Add vertical surface obstacle columns / tree trunks (60% probability)
-        if rng.rand() > 0.4:
-            px, pz = rng.randint(6, 26, size=2)
-            pillar_h = rng.randint(3, 7)
-            ground_y = terrain_height[px, pz]
-            grid[ground_y:min(self.grid_size, ground_y + pillar_h), px, pz] = 3
+        elif active_biome == "mountains":
+            base_h = rng.randint(14, 18)
+            x_c = np.linspace(0, 3 * np.pi, self.grid_size)
+            z_c = np.linspace(0, 3 * np.pi, self.grid_size)
+            X, Z = np.meshgrid(x_c, z_c)
+            terrain_h = np.clip(
+                (base_h + 6.0 * np.sin(X + rng.uniform(0, 3)) + 4.0 * np.cos(Z + rng.uniform(0, 3))).astype(int),
+                6, 28
+            )
+            for x in range(self.grid_size):
+                for z in range(self.grid_size):
+                    h = terrain_h[x, z]
+                    grid[0:max(1, h - 1), x, z] = 1 # Mountain rock
+                    grid[max(0, h - 1):h, x, z] = 2 # Peak soil / snow
+
+        elif active_biome == "ravine":
+            grid[0:4, :, :] = 1 # Canyon bedrock floor
+            rx = rng.randint(12, 20)
+            rw = rng.randint(4, 7)
+            for x in range(self.grid_size):
+                for z in range(self.grid_size):
+                    offset = int(2.5 * np.sin(z / 4.0))
+                    if abs(x - (rx + offset)) > (rw // 2):
+                        wh = rng.randint(18, 26)
+                        grid[4:wh, x, z] = 1
+                        if wh > 21:
+                            grid[wh - 1:wh, x, z] = 2
+
+        elif active_biome == "cavern":
+            grid[0:28, :, :] = 1 # Solid subterranean bedrock
+            for _ in range(rng.randint(2, 4)):
+                cx, cy, cz = rng.randint(8, 24, size=3)
+                cr = rng.randint(4, 7)
+                for y in range(max(1, cy - cr), min(31, cy + cr)):
+                    for x in range(max(1, cx - cr), min(31, cx + cr)):
+                        for z in range(max(1, cz - cr), min(31, cz + cr)):
+                            if (x - cx)**2 + (y - cy)**2 + (z - cz)**2 <= cr**2:
+                                grid[y, x, z] = 0 # Air cavity
+            # Subterranean water pool
+            grid[1:3, 10:22, 10:22] = 4
 
         return grid
