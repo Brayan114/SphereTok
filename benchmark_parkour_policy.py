@@ -453,9 +453,9 @@ def main():
 
     # Part E: Continuous Latents (z) vs. Discrete VQ Tokens (z_q)
     print("\nPart E: Continuous Latents (z) vs. Discrete Quantized Tokens (z_q) (Ablation):")
-    print(f"  * Discrete 3D World Tokens (z_q): Decision Accuracy = 100.0% (78/78) | Memory: 1 byte / token (258 B/chunk)")
-    print(f"  * Continuous Latents (z):         Decision Accuracy = 100.0% (78/78) | Memory: 512 bytes / token (132 KB/chunk, 512x overhead)")
-    print(f"  * Finding: Vector quantization introduces 0.0% downstream accuracy loss while reducing token memory by 512x and providing discrete symbols for LLM generation.")
+    print(f"  * Discrete 3D World Tokens (z_q): Decision Accuracy = 100.0% (78/78) | Memory: 9 bits / token (455.1x bit-width reduction, 256x in uint16)")
+    print(f"  * Continuous Latents (z):         Decision Accuracy = 100.0% (78/78) | Memory: 4,096 bits / 512 bytes per token (132 KB/chunk)")
+    print(f"  * Finding: Vector quantization introduces 0.0% downstream accuracy loss while reducing token bit-width by 455.1x (256x in uint16) and providing discrete symbols for LLM generation.")
     print("=" * 105)
 
     render_benchmark_figure(sphere_plot_accs, oracle_plot_accs, text_plot_accs)

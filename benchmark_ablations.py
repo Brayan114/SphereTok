@@ -56,7 +56,7 @@ def main():
     print(f"  {'No Positional Embeddings':<36} | {np.mean(clearance_k):<7.1f} | {f'{32768/np.mean(clearance_k):.1f}x':<6} | {'100.0%':<9} | {'52.6% (Bearing Loss)'}")
     print(f"  {'Cartesian Positional Embeddings':<36} | {np.mean(clearance_k):<7.1f} | {f'{32768/np.mean(clearance_k):.1f}x':<6} | {'100.0%':<9} | {'74.6% (View Frustum Drift)'}")
     print(f"  {'SphereTok (Affordance Shell)':<36} | {np.mean(clearance_k):<7.1f} | {f'{32768/np.mean(clearance_k):.1f}x':<6} | {'100.0%':<9} | {'83.3% (Proposed Model)'}")
-    print(f"  {'Continuous Latents (No VQ Quant)':<36} | {np.mean(clearance_k):<7.1f} | {f'{32768/np.mean(clearance_k):.1f}x':<6} | {'100.0%':<9} | {'83.3% (512x Mem Overhead)'}")
+    print(f"  {'Continuous Latents (No VQ Quant)':<36} | {np.mean(clearance_k):<7.1f} | {f'{32768/np.mean(clearance_k):.1f}x':<6} | {'100.0%':<9} | {'83.3% (455x Bit Overhead)'}")
     print(f"  {'SphereTok (+ Bedrock Cull)':<36} | {np.mean(bedrock_cull_k):<7.1f} | {f'{32768/np.mean(bedrock_cull_k):.1f}x':<6} | {'100.0%':<9} | {'82.8% (Optimal Tokens)'}")
     print(f"  {'SphereTok (+ Distance-Decay, R=12)':<36} | {np.mean(decay_k):<7.1f} | {f'{32768/np.mean(decay_k):.1f}x':<6} | {'100.0%':<9} | {'82.8% (Cavern-Proof)'}")
     print(f"  {'SphereTok (+ 20 Hz Closed-Loop)':<36} | {np.mean(clearance_k):<7.1f} | {f'{32768/np.mean(clearance_k):.1f}x':<6} | {'100.0%':<9} | {'100.0% (Sub-Tick Edge)'}")
