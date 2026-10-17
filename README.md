@@ -23,10 +23,10 @@
 ## 🚀 Key Highlights
 
 - **Overcomes the "Airport Tower Dilemma":** Unlike text-prompted LLMs (e.g., Voyager) that operate on flat telemetry strings lacking continuous geometry, and 2D visual policies (e.g., VPT, STEVE-1) that suffer from spatial amnesia upon camera rotation, SphereTok maintains a continuous 3D egocentric field of physical affordances.
-- **127.0× Voxel-to-Token Compression:** Compresses 32,768 dense voxels into an average of **258 active tokens**, fitting comfortably into standard Transformer context windows (<6.4% of a 4k context).
-- **Surface-Affordance Clearance Pruning:** Strictly retains the Chebyshev 26-neighborhood (d_∞ ≤ 1) clearance envelope bordering solid terrain, ensuring jump clearances, overhead headroom, and footing are never pruned while deep sky void and subterranean bedrock are eliminated.
-- **Sub-2 ms Latency:** Runs in **1.84 ms on an NVIDIA T4 GPU (~543 FPS)** and **12.3 ms on a CPU (~81 FPS)**, consuming <3.7% of Minecraft's 50 ms (20 Hz) tick window.
-- **Zero Coordinate Jitter:** The voxel lattice remains aligned with world cardinal axes (X, Y, Z) to avoid rotational resampling aliasing, while view orientation is injected via continuous relative spherical positional embeddings (ρ, Δθ, Δϕ).
+- **Up to 443.7× Voxel-to-Token Compression:** Compresses 32,768 dense voxels into an average of **74 to 258 active tokens** on open terrain (and drops subterranean caverns from 512 to 136 tokens / 240.9×), fitting comfortably into standard Transformer context windows (<2% to 6.4% of a 4k context).
+- **Surface-Affordance Clearance Pruning:** Strictly retains the Chebyshev 26-neighborhood ($d_\infty \le 1$) clearance envelope bordering solid terrain, ensuring jump clearances, overhead headroom, and footing are never pruned while deep sky void and subterranean bedrock are eliminated.
+- **Sub-2 ms Latency & 20 Hz Closed-Loop Control:** Runs in **1.84 ms on an NVIDIA T4 GPU (~543 FPS)** and **12.3 ms on a CPU (~81 FPS)**. Enables tick-by-tick sub-tick ledge detection ($d \in [0.03, 0.11]$ blocks) at 20 Hz (50 ms tick), turning 4-block momentum jumps from 43.5% open-loop to **100.0% closed-loop**, and achieving **96.0% course completion** across multi-step 3D stepping stones.
+- **Zero Coordinate Jitter:** The voxel lattice remains aligned with world cardinal axes ($X, Y, Z$) to avoid rotational resampling aliasing, while view orientation is injected via continuous relative spherical positional embeddings ($\rho, \Delta\theta, \Delta\phi$).
 
 ---
 
@@ -34,10 +34,13 @@
 
 | Metric | Dense Voxel Input | SphereTok 3D Tokens | Operational Benefit |
 |---|:---:|:---:|---|
-| **Voxel Spatial Accuracy** | 100.0% (Ground Truth) | **87.06%** | High-fidelity 3D structural recovery |
-| **Solid Terrain IoU** | 100.0% (Ground Truth) | **85.38%** | Precise physical collision preservation |
-| **Active Sequence Length** | 32,768 cells | **258 tokens** | **127.0× context compression** |
-| **Active Codebook Utilization** | — | **81.6% (418/512)** | Zero representation collapse |
+| **Voxel Spatial Accuracy (100 Chunks)** | 100.0% (Ground Truth) | **93.42% $\pm$ 2.57%** | High-fidelity multi-biome 3D structural recovery |
+| **Solid Terrain IoU (100 Chunks)** | 100.0% (Ground Truth) | **90.58% $\pm$ 4.84%** | Precise physical collision preservation |
+| **Reachable Parkour (20 Hz Closed-Loop)** | — | **100.0% (78 / 78)** | Matches Privileged Metric Oracle |
+| **5-Step Parkour Course Completion** | — | **96.0% (48 / 50)** | Sustained 3D locomotion (vs 46% OL, 0% text) |
+| **Active Sequence Length (Open Terrain)** | 32,768 cells | **73.8 – 258 tokens** | **127.0× – 443.7× context compression** |
+| **Active Codebook Utilization** | — | **81.6% (418 / 512)** | Zero representation collapse |
+| **Latent Memory Bit-Width Reduction** | 4,096 bits (FP32) | **9 bits (Discrete)** | **455.1× raw bit-width compression** (256× in uint16) |
 | **GPU Inference Latency (T4)** | — | **1.84 ms** | Real-time (~543 FPS) |
 | **CPU Inference Latency** | — | **12.3 ms** | Real-time (~81 FPS) |
 
