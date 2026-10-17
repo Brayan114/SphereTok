@@ -83,7 +83,7 @@ class EgocentricPositionalEncoding(nn.Module):
         yaw_rel = (torch.atan2(dz, dx) - agent_yaw + math.pi) % (2.0 * math.pi) - math.pi
         pitch_rel = torch.asin(torch.clamp(dy / r, -1.0 + 1e-6, 1.0 - 1e-6)) - agent_pitch
 
-        # Normalize coordinates into spherical input tensor in [-1, 1]
+        # Scale coordinates by characteristic dimensions: r/16 in [0, 1.52], yaw/pi in [-1, 1], pitch/(pi/2) in [-2, 2]
         spherical = torch.stack([r / 16.0, yaw_rel / math.pi, pitch_rel / (math.pi / 2.0)], dim=-1)
 
         if self.use_fourier:

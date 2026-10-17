@@ -74,7 +74,7 @@ SphereTok/
 ### 1. Installation
 Clone the repository and install dependencies:
 ```bash
-git clone https://github.com/Brayan114/SphereTok.git
+git clone https://anonymous.4open.science/r/SphereTok-Anon.git
 cd SphereTok
 pip install torch numpy matplotlib
 ```
@@ -120,13 +120,11 @@ python benchmark_parkour_policy.py
 If you find SphereTok useful in your research or applications, please cite:
 
 ```bibtex
-@article{brayan2026spheretok,
+@article{spheretok2026,
   title={SphereTok: An Egocentric 3D World Tokenizer for Embodied Perception in Voxel Environments},
-  author={Brayan},
-  journal={Zenodo Preprint},
-  year={2026},
-  doi={10.5281/zenodo.22872845},
-  url={https://doi.org/10.5281/zenodo.22872845}
+  author={Anonymous Authors},
+  journal={Paper under double-blind peer review},
+  year={2026}
 }
 ```
 
