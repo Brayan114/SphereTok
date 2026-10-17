@@ -226,13 +226,20 @@ class SphereTok(nn.Module):
         full_recon = full_recon.permute(0, 4, 1, 5, 2, 6, 3, 7).contiguous()
         return full_recon.view(batch_size, self.num_block_classes, self.grid_size, self.grid_size, self.grid_size)
 
-    def compute_affordance_mask(self, patches: torch.Tensor, mode: str = "clearance", cull_bedrock: bool = False):
+    def compute_affordance_mask(
+        self,
+        patches: torch.Tensor,
+        mode: str = "clearance",
+        cull_bedrock: bool = False,
+        max_distance: float = None
+    ):
         """
         Computes 3D morphological affordance retention mask:
         - mode='none': retains all 512 candidate micro-cubes.
         - mode='solid': blind air pruning (retains only micro-cubes with solid voxels).
         - mode='clearance': 26-neighborhood Chebyshev clearance shell (solid + adjacent air headroom/footing).
         - cull_bedrock: if True, prunes interior solid patches completely encased on all 26 sides (deep bedrock).
+        - max_distance: if float, prunes affordance patches beyond radial Euclidean distance (distance-decay filter).
         """
         B = patches.shape[0]
         N = self.num_patches_per_axis
@@ -255,6 +262,10 @@ class SphereTok(nn.Module):
             interior_bedrock = -F.max_pool3d(-solid_grid, kernel_size=3, stride=1, padding=1)
             retained = retained & (interior_bedrock == 0)
 
+        if max_distance is not None:
+            dist = torch.norm(self.patch_centers, dim=-1).view(1, 1, N, N, N).to(retained.device)
+            retained = retained & (dist <= max_distance)
+
         # Unconditionally preserve agent's immediate cell at center
         c = N // 2
         retained[:, :, c, c, c] = 1.0
@@ -268,7 +279,8 @@ class SphereTok(nn.Module):
         pitch: float = 0.0,
         prune_air: bool = True,
         cull_bedrock: bool = False,
-        mode: str = "clearance"
+        mode: str = "clearance",
+        max_distance: float = None
     ):
         """
         Forward pass:
@@ -289,7 +301,7 @@ class SphereTok(nn.Module):
         else:
             active_mode = mode
 
-        affordance_mask = self.compute_affordance_mask(patches, mode=active_mode, cull_bedrock=cull_bedrock)
+        affordance_mask = self.compute_affordance_mask(patches, mode=active_mode, cull_bedrock=cull_bedrock, max_distance=max_distance)
 
         padding_mask = None
         if active_mode != "none" and affordance_mask.any():
